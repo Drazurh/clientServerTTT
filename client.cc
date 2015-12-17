@@ -1,56 +1,13 @@
-#include <vector>
-#include <ncurses.h>
-
-#include <fcntl.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <unistd.h>
-
-#include <string.h>
-#include <sstream>
-#include <stdio.h>
-
-#include <time.h>
-
-#include<iostream>
-
-#define MAX_BUF 1024
-#define READ 0
-#define WRITE 1
+#ifndef _INCL_GUARD
+#define _INCL_GUARD
+#include "includes.h"
+#endif
 
 #include "message.h"
+#include "fifos.h"
 
-namespace patch
-{
-    template < typename T > std::string to_string( const T& n )
-    {
-        std::ostringstream stm ;
-        stm << n ;
-        return stm.str() ;
-    }
-}
 
 using namespace std;
-
-enum cellState{EMPTY, PLAYER, SERVER};
-enum gameState{PLAYER_TURN, COMP_TURN, PLAYER_WIN, COMP_WIN};
-
-class newClientMessage{
-public:
-    int clientfd[2];
-    int serverfd[2];
-    newClientMessage(){
-
-    }
-    void create(){
-        pipe(clientfd);
-        pipe(serverfd);
-    }
-    void receive(){
-        //close(serverfd[READ]);
-        //close(clientfd[WRITE]);
-    }
-};
 
 
 class TTTGame{
@@ -63,7 +20,7 @@ class TTTGame{
     char readbuf[MAX_BUF];
     char lastmsg[MAX_BUF];
 
-    newClientMessage newclientmsg;
+    Fifos fifos;
 
     gameState state;
     cellState board[3][3];
@@ -253,14 +210,12 @@ class TTTGame{
 
 
 
-        newclientmsg = newClientMessage();
-        newclientmsg.create();
-        writefd = newclientmsg.clientfd[WRITE];
-        readfd = newclientmsg.serverfd[READ];
+        fifos = Fifos();
+        fifos.create();
 
 
         int fd = open(initfifo, O_WRONLY);
-            write(fd, &newclientmsg, sizeof(newClientMessage));
+            write(fd, &fifos, sizeof(Fifos));
         close(fd);
 
     }

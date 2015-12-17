@@ -1,76 +1,36 @@
-#include <fcntl.h>
-#include <stdio.h>
-#include <sys/stat.h>
-#include <unistd.h>
-#include <iostream>
-#include <cstring>
 
-#include <stdlib.h>
-#include <string.h>
-#include <string>
-#include <assert.h>
-
-#include <sstream>
-
-#include <time.h>
-
-#define MAX_BUF 1024
-#define READ 0
-#define WRITE 1
-
-#define DISPLAY_MSG_TYPE 1
-
+#ifndef _INCL_GUARD
+#define _INCL_GUARD
+#include "includes.h"
+#endif
 
 #include "message.h"
-
-namespace patch
-{
-    template < typename T > std::string to_string( const T& n )
-    {
-        std::ostringstream stm ;
-        stm << n ;
-        return stm.str() ;
-    }
-}
+#include "fifos.h"
 
 using namespace std;
-enum cellState{EMPTY, PLAYER, SERVER};
-
-class newClientMessage{
-public:
-    int clientfd[2];
-    int serverfd[2];
-    newClientMessage(){
-
-    }
-    void create(){
-        pipe(clientfd);
-        pipe(serverfd);
-    }
-
-    void receive(){
-
-        //close(serverfd[READ]);
-        //close(clientfd[WRITE]);
-    }
-};
 
 static int client_id = 0;
+int fd;
 
 class TTTGameServer{
 private:
     int id;
     int readfd;
     int writefd;
+    Fifos fifos;
     char readbuf[MAX_BUF];
     message lastmsg;
     cellState board[3][3];
 public:
-    TTTGameServer(int _readfd, int _writefd){
+    TTTGameServer(Fifos _fifos){
+        fifos = _fifos;
+        fifos.receive();
+        //readfd = fifos.clientfifo[READ];
+        //writefd = fifos.serverfifo[WRITE];
+
         id = client_id;
         client_id ++;
-        readfd = _readfd;
-        writefd = _writefd;
+
 
     }
 
@@ -158,9 +118,11 @@ public:
     }
 
     message getClientMsg(){
-        log(string("getting message from ") + patch::to_string(readfd));
-
+        log(string("getting message from ") + fifos.clientWriteFIFO);
+        return message();
+        readfd = open(fifos.clientWriteFIFO.c_str(), O_RDONLY);
         read(readfd, readbuf, MAX_BUF);
+
         message tmp;
 
         memcpy(&tmp,readbuf,sizeof(message));
@@ -171,6 +133,7 @@ public:
 
         }
         cout <<"returning message\n";
+        close(readfd);
         return tmp;
     }
 
@@ -234,15 +197,15 @@ char** str_split(char* a_str, const char a_delim)
     return result;
 }
 
-void newClient(newClientMessage newclientmsg){
+void newClient(Fifos fifos){
     cout << "Connecting to new client \nServer writing to "
-        << newclientmsg.serverfd[WRITE]
+        << fifos.serverfifo[WRITE]
         << "\nServer reading from "
-        << newclientmsg.clientfd[READ]
+        << fifos.clientfifo[READ]
         << "\nClient writing to "
-        << newclientmsg.clientfd[WRITE]
+        << fifos.clientfifo[WRITE]
         << "\nClient reading from "
-        << newclientmsg.serverfd[READ]
+        << fifos.serverfifo[READ]
         << endl;
     pid_t pid = fork();
 
@@ -250,8 +213,8 @@ void newClient(newClientMessage newclientmsg){
         cout << "FORKED FAILED\n";
     }
     else if(pid > 0){
-
-        TTTGameServer gameServer(newclientmsg.clientfd[READ], newclientmsg.serverfd[WRITE]);
+        close(fd);
+        TTTGameServer gameServer(fifos);
         gameServer.start();
     }
 }
@@ -284,21 +247,27 @@ void newClient(newClientMessage newclientmsg){
 //    }
 //}
 
+
 int main(){
-    int fd;
+
+
     char * myfifo = "/home/john/tmp/ttt";
     char buf[MAX_BUF];
     char msg[MAX_BUF];
-    fd = open(myfifo, O_RDONLY);
-    newClientMessage newclientmessage;
+    Fifos fifos = Fifos();
+
+
+    cout << "Server started, waiting for clients\n";
     while(true){
+        fd = open(myfifo, O_RDONLY);
         read(fd, buf, MAX_BUF);
         if(strcmp(buf,msg) != 0){
-            memcpy(msg,buf,MAX_BUF);
-            memcpy(&newclientmessage,msg,sizeof(newClientMessage));
-            newClient(newclientmessage);
+            memcpy(msg,buf,sizeof(Fifos));
+            memcpy(&fifos,msg,sizeof(Fifos));
+            newClient(fifos);
         }
+        close(fd);
     }
-    close(fd);
+
     return true;
 }
