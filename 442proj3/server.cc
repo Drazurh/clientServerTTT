@@ -19,17 +19,17 @@ private:
     int writefd;
     Fifos fifos;
     char readbuf[MAX_BUF];
-    int lastmsgid;
+    message lastmsg;
     cellState board[3][3];
 public:
     TTTGameServer(Fifos _fifos){
 
         fifos = _fifos;
-        readfd = open(fifos.clientFIFO().c_str(), O_RDONLY);
-        writefd = open(fifos.serverFIFO().c_str(), O_WRONLY);
+        readfd = open(fifos.clientFIFO.c_str(), O_RDONLY);
+        writefd = open(fifos.serverFIFO.c_str(), O_WRONLY);
         id = client_id;
         client_id ++;
-        lastmsgid = -1;
+
 
     }
 
@@ -44,30 +44,27 @@ public:
         stringstream stream;
         messageType msgType;
         message msg = getClientMsg();
-        while(true){
-            if(!msg.get_str().empty()){
+            cout << "loop\n";
+            if(!msg.str.empty() && false){
                 stream.flush();
-                stream << msg.get_str();
-                msgType = msg.get_type();
-
-                if(msgType == MOVE){
+                stream << msg.str;
+                msgType = msg.type;
+                if(DISPLAY_MSG_TYPE){
+                    log(messageTypeString(msgType));
+                }
+                if(msgType == messageType(MOVE)){
                     makeMove(stream);
                 }
-                else if(msgType == NEWGAME){
-                    log("resetting");
+                else if(msgType == messageType(NEWGAME)){
+                     cout <<"resetting";
                     reset();
                 }
-                else if(msgType == EXIT){
+                else if(msgType == messageType(EXIT)){
                     exit_game();
 
                 }
-                else{
-                    log("Server received empty or invalid message");
-                }
             }
             msg = getClientMsg();
-        }
-
 
         cout <<"exiting loop";
     }
@@ -84,13 +81,13 @@ public:
 
     string messageTypeString(messageType msgType){
         switch(msgType){
-            case MOVE:
+            case messageType(MOVE):
                 return "MOVE";
             break;
-            case EXIT:
+            case messageType(EXIT):
                 return "EXIT";
             break;
-            case NEWGAME:
+            case messageType(NEWGAME):
                 return "NEWGAME";
             break;
             default:
@@ -123,22 +120,22 @@ public:
         message tmp;
 
         memcpy(&tmp,readbuf,sizeof(message));
-        if(lastmsgid != tmp.getid()){
-            lastmsgid = tmp.getid();
+        if(lastmsg.id != tmp.id){
+            lastmsg = tmp;
         }else{
             tmp = message();
         }
-
+        cout <<"returning message\n";
         return tmp;
     }
 
     void sendClientMsg(string msg){
-        log("sending message");
+        cout <<"sending message\n";
         int timestamp = static_cast<int>(time(NULL));
         msg += " ";
         msg += patch::to_string(timestamp);
         write(writefd, msg.c_str(), MAX_BUF);
-        log("done");
+        cout << "done\n";
     }
 
 };
@@ -193,20 +190,19 @@ char** str_split(char* a_str, const char a_delim)
 }
 
 void newClient(Fifos fifos){
-    cout << "Connecting to new client\n";
-//        << "Server writing to "
-//        << fifos.serverFIFO
-//        << "\nServer reading from "
-//        << fifos.clientFIFO
-//        << endl;
+    cout << "Connecting to new client \nServer writing to "
+        << fifos.serverFIFO
+        << "\nServer reading from "
+        << fifos.clientFIFO
+        << endl;
     pid_t pid = fork();
-    cout << "pid: " << pid << endl;;
+
     if(pid < 0){
         cout << "FORKED FAILED\n";
     }
     else if(pid > 0){
-        cout <<"server forked for new client\n";
-        //close(fd);
+        cout << "forking server\n";
+        sleep(1000);
         TTTGameServer gameServer(fifos);
         gameServer.start();
     }
@@ -244,23 +240,24 @@ void newClient(Fifos fifos){
 int main(){
 
 
-    string myfifo = "/home/john/tmp/ttt";
+    char * myfifo = "/home/john/tmp/ttt";
     char buf[MAX_BUF];
+    char msg[MAX_BUF];
     Fifos fifos = Fifos();
-    pid_t prev_pid = -2;
 
-    cout << "Server started, waiting for clients\n" ;
-    fd = open(myfifo.c_str(), O_RDONLY);
+
+    cout << "Server started, waiting for clients\n";
     while(true){
-        read(fd, buf, MAX_BUF);
-        memcpy(&fifos,buf,sizeof(fifos));
-        if(fifos.get_pid() != prev_pid){
-            prev_pid  = fifos.get_pid();
-            cout << "new message, id: " << prev_pid << endl;
+        fd = open(myfifo, O_RDONLY);
+
+        read(fd, buf, sizeof(fifos));
+        if(strcmp(buf,msg) != 0){
+            memcpy(msg,buf,sizeof(fifos));
+            memcpy(&fifos,msg,sizeof(fifos));
             newClient(fifos);
         }
-        sleep(1);
+        close(fd);
     }
-    close(fd);
+
     return true;
 }

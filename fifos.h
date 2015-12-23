@@ -1,41 +1,41 @@
 #include "patch.h"
 
+
+using namespace std;
+
+const string client("/tmp/tttClient_");
+const string server("/tmp/tttServer_");
+
 class Fifos{
+private:
+    pid_t pid;
 public:
-    string clientReadFIFO;
-    string clientWriteFIFO;
-    string serverReadFIFO;
-    string serverWriteFIFO;
-    int clientfifo[2];
-    int serverfifo[2];
-
     Fifos(){
-        clientReadFIFO = "/home/john/tmp/tttClientRead_";
-        clientWriteFIFO = "/home/john/tmp/tttClientWrite_";
-        serverReadFIFO = "/home/john/tmp/tttServerRead_";
-        serverWriteFIFO = "/home/john/tmp/tttServerWrite_";
-        pid_t pid = getpid();
-        string pidstring = patch::to_string(pid);
-
-        clientReadFIFO += pidstring;
-        clientWriteFIFO += pidstring;
-        serverReadFIFO += pidstring;
-        serverWriteFIFO += pidstring;
+        pid = getpid();
+    }
+    Fifos operator = (Fifos other){
+        pid = other.get_pid();
     }
 
+    string pidstring(){
+        return patch::to_string(static_cast<int>(pid));
+    }
+
+    string clientFIFO(){
+        return client + pidstring();
+    }
+    string serverFIFO(){
+        return server + pidstring();
+    }
+    int get_pid(){
+        return pid;
+    }
     void create(){
-
-        mkfifo(clientReadFIFO.c_str(), 0666);
-        mkfifo(clientWriteFIFO.c_str(), 0666);
-        mkfifo(serverReadFIFO.c_str(), 0666);
-        mkfifo(serverWriteFIFO.c_str(), 0666);
-
-        //clientfifo[WRITE] = open(clientWriteFIFO.c_str(), O_RDONLY);
-        //serverfifo[READ] = open(clientWriteFIFO.c_str(), O_RDONLY);
-
-    }
-    void receive(){
-        //clientfifo[READ] = open(clientWriteFIFO.c_str(), O_RDONLY);
-        //serverfifo[WRITE] = open(clientWriteFIFO.c_str(), O_RDONLY);
+        int code1, code2;
+        code1 = mkfifo(clientFIFO().c_str(), 0666);
+        code2 = mkfifo(serverFIFO().c_str(), 0666);
+        if(code1 == -1 || code2 == -1){
+           perror("mkfifo returned an error - file may already exist");
+        }
     }
 };

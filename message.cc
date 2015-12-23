@@ -2,17 +2,27 @@
 
 using namespace std;
 
-static int _id = 0;
+
 message::message(messageType _type, string msg){
-		id = _id;
-		_id++;
+    id = _msgid;
+    _msgid++;
     type = _type;
-    str = msg;
+    str = new char[len];
+    msg.copy(str, len);
 }
 message::message(){
-		id = _id;
-		_id++;
+    id = _msgid;
+    _msgid++;
     type = NO_MESSAGE;
-    str = string();
+    str = new char [len];
+
+}
+void message::setempty(){
+    type = NO_MESSAGE;
 }
 
+
+
+string message::get_str(){
+    return string(str);
+}

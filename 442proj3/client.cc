@@ -201,9 +201,7 @@ class TTTGame{
         msg += patch::to_string(static_cast<int>(time(NULL)));
 
         message tmpmsg(msgType, msg);
-        writefd = open(fifos.clientFIFO().c_str(), O_WRONLY);
         write(writefd,&tmpmsg,sizeof(tmpmsg));
-        close(writefd);
     }
 
     void connect(){
@@ -216,8 +214,8 @@ class TTTGame{
             write(fd, &fifos, sizeof(fifos));
         close(fd);
 
-
-        readfd = open(fifos.serverFIFO().c_str(), O_RDONLY);
+        writefd = open(fifos.clientFIFO.c_str(), O_WRONLY);
+        readfd = open(fifos.serverFIFO.c_str(), O_RDONLY);
     }
 };
 
