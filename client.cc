@@ -173,12 +173,12 @@ class TTTGame{
             displayToBoard(_y,_x, 0, 'X');
         }
         else if(strcmp(msg.c_str(), "invalid") == 0){
-            displayError("Invalid move. Choose an empty space.");
+            displayError(string("Invalid move. Choose an empty space."));
         }
     }
 
-    void displayError(char * str){
-        mvprintw(16,1,str);
+    void displayError(string str){
+        mvprintw(16,1,str.c_str());
         mvprintw(17,1,"press any key to continue...");
         getch();
         mvprintw(16,1,"                                                                      ");
@@ -192,6 +192,11 @@ class TTTGame{
         }
         memcpy(lastmsg,readbuf,MAX_BUF);
         return string(lastmsg);
+    }
+
+    void getNewMessage(message& msg){
+        read(readfd, readbuf, MAX_BUF);
+        memcpy(&msg, readbuf, sizeof(msg));
     }
 
     void sendMessage(messageType msgType, string _msg){
@@ -213,12 +218,27 @@ class TTTGame{
         fifos.create();
 
         int fd = open(initfifo, O_WRONLY);
-            write(fd, &fifos, sizeof(fifos));
+        write(fd, &fifos, sizeof(fifos));
         close(fd);
 
+        if(!handshake())
+            exitGame();
 
-        readfd = open(fifos.serverFIFO().c_str(), O_RDONLY);
     }
+    bool handshake(){
+        readfd = open(fifos.serverFIFO().c_str(), O_RDONLY);
+        message msg;
+        getNewMessage(msg);
+        if(msg.get_type() != HANDSHAKE){
+            displayError("Handshake failed, exiting");
+            return false;
+        }
+        writefd = open(fifos.clientFIFO().c_str(), O_WRONLY);
+        write(writefd, &msg, sizeof(msg));
+        return true;
+    }
+
+
 };
 
 int main(){

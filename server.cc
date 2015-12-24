@@ -39,7 +39,31 @@ public:
                 board[i][j]=EMPTY;
     }
 
+    void getNewMessage(message& msg){
+        read(readfd, readbuf, MAX_BUF);
+        memcpy(&msg, readbuf, sizeof(msg));
+    }
+
+    bool handshake(){
+        cout << "initiating handshake";
+        message msg(HANDSHAKE, patch::to_string(fifos.get_pid()));
+        writefd = open(fifos.clientFIFO().c_str(), O_WRONLY);
+        write(writefd, &msg, sizeof(msg));
+
+        readfd = open(fifos.clientFIFO().c_str(), O_RDONLY);
+        getNewMessage(msg);
+        if(msg.get_type() != HANDSHAKE){
+            log("Handshake failed, exiting");
+            return false;
+        }
+
+        return true;
+
+    }
+
     void start(){
+        if(!handshake())
+            exit_game();
         reset();
         stringstream stream;
         messageType msgType;
@@ -252,7 +276,9 @@ int main(){
     cout << "Server started, waiting for clients\n" ;
     fd = open(myfifo.c_str(), O_RDONLY);
     while(true){
+        cout << "waiting for new message...";
         read(fd, buf, MAX_BUF);
+        cout << "received\n";
         memcpy(&fifos,buf,sizeof(fifos));
         if(fifos.get_pid() != prev_pid){
             prev_pid  = fifos.get_pid();

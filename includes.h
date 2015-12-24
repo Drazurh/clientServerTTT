@@ -16,10 +16,13 @@
 
 #include <ncurses.h>
 
+#include <sys/time.h>
+
 #define MAX_BUF 1024
 #define READ 0
 #define WRITE 1
 #define DISPLAY_MSG_TYPE 1
+#define HANDSHAKETIMEOUT 15;
 enum cellState{EMPTY, PLAYER, SERVER};
 enum gameState{PLAYER_TURN, COMP_TURN, PLAYER_WIN, COMP_WIN};
 
