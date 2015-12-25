@@ -25,8 +25,6 @@ public:
     TTTGameServer(Fifos _fifos){
 
         fifos = _fifos;
-        readfd = open(fifos.clientFIFO().c_str(), O_RDONLY);
-        writefd = open(fifos.serverFIFO().c_str(), O_WRONLY);
         id = client_id;
         client_id ++;
         lastmsgid = -1;
@@ -47,7 +45,7 @@ public:
     bool handshake(){
         cout << "initiating handshake";
         message msg(HANDSHAKE, patch::to_string(fifos.get_pid()));
-        writefd = open(fifos.clientFIFO().c_str(), O_WRONLY);
+        writefd = open(fifos.serverFIFO().c_str(), O_WRONLY);
         write(writefd, &msg, sizeof(msg));
 
         readfd = open(fifos.clientFIFO().c_str(), O_RDONLY);
@@ -67,29 +65,29 @@ public:
         reset();
         stringstream stream;
         messageType msgType;
-        message msg = getClientMsg();
+        message msg;
+
         while(true){
-            if(!msg.get_str().empty()){
-                stream.flush();
-                stream << msg.get_str();
-                msgType = msg.get_type();
+            getNewMessage(msg);
+            stream.flush();
+            stream << msg.get_str();
+            msgType = msg.get_type();
 
-                if(msgType == MOVE){
-                    makeMove(stream);
-                }
-                else if(msgType == NEWGAME){
-                    log("resetting");
-                    reset();
-                }
-                else if(msgType == EXIT){
-                    exit_game();
-
-                }
-                else{
-                    log("Server received empty or invalid message");
-                }
+            if(msgType == MOVE){
+                makeMove(stream);
             }
-            msg = getClientMsg();
+            else if(msgType == NEWGAME){
+                log("resetting");
+                reset();
+            }
+            else if(msgType == EXIT){
+                exit_game();
+
+            }
+            else{
+                log("Server received empty or invalid message");
+            }
+
         }
 
 
@@ -276,9 +274,9 @@ int main(){
     cout << "Server started, waiting for clients\n" ;
     fd = open(myfifo.c_str(), O_RDONLY);
     while(true){
-        cout << "waiting for new message...";
+        //cout << "waiting for new message...";
         read(fd, buf, MAX_BUF);
-        cout << "received\n";
+        //cout << "received\n";
         memcpy(&fifos,buf,sizeof(fifos));
         if(fifos.get_pid() != prev_pid){
             prev_pid  = fifos.get_pid();

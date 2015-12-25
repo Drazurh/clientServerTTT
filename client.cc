@@ -205,7 +205,7 @@ class TTTGame{
         msg += " ";
         msg += patch::to_string(static_cast<int>(time(NULL)));
 
-        message tmpmsg(msgType, msg);
+        message tmpmsg(msgType, msg.c_str());
         writefd = open(fifos.clientFIFO().c_str(), O_WRONLY);
         write(writefd,&tmpmsg,sizeof(tmpmsg));
         close(writefd);

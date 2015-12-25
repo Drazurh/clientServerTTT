@@ -1,10 +1,9 @@
 #include <string.h>
 #include <string>
-#define STR_LENGTH
+#define STR_LENGTH 512
 using namespace std;
 
 enum messageType{MOVE, EXIT, NEWGAME, HANDSHAKE, NO_MESSAGE};
-const int len = 512;
 static int _msgid = 0;
 
 class message{
@@ -13,7 +12,7 @@ private:
     char str[STR_LENGTH];
 public:
     messageType type;
-    message(messageType _type, string msg);
+    message(messageType _type, const char* msg);
     message();
     int getid(){return id;};
     string get_str();

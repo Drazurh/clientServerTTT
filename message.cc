@@ -3,11 +3,11 @@
 using namespace std;
 
 
-message::message(messageType _type, string msg){
+message::message(messageType _type, const char* msg){
     id = _msgid;
     _msgid++;
     type = _type;
-    msg.copy(str, len);
+    memcpy(str, msg, STR_LENGTH);
 }
 message::message(){
     id = _msgid;
