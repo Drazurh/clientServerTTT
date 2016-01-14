@@ -37,8 +37,8 @@ class TTTGame{
     }
 
     void reset(){
-        cursorX=2;
-        cursorY=2;
+        cursorX=1;
+        cursorY=1;
         state = PLAYER_TURN;
         for(int i=0; i<3; i++)
             for(int j=0; j<3; j++)
@@ -67,13 +67,14 @@ class TTTGame{
         welcomeMessage();
         reset();
         gameLoop();
-        exitGame();
     }
 
     void exitGame(){
+        sendMessage(EXIT, "client exited game");
         close(writefd);
         close(readfd);
         endwin();
+        exit(1);
     }
 
     void displayBoardBackground(){
@@ -109,20 +110,26 @@ class TTTGame{
                 break;
                 case ' ':
                     makeMove(cursorY, cursorX);
-                break;
 
+                break;
             }
         }
-        else if(state == COMP_TURN){
-
-        }
-        else if(state == PLAYER_WIN){
-
-        }
-        else if(state == COMP_WIN){
-
-        }
         gameLoop();
+    }
+
+    void displayWin(cellState winner){
+        if(winner == SERVER)
+            mvprintw(16,1,"SERVER WINS");
+        if(winner == PLAYER)
+            mvprintw(16,1,"PLAYER WINS");
+        if(winner == EMPTY)
+            mvprintw(16,1,"TIE");
+
+        mvprintw(17,1,"press any key to continue...");
+        getch();
+        reset();
+        mvprintw(16,1,"                                                                      ");
+        mvprintw(17,1,"                                                                      ");
     }
 
     void clearScreen(){
@@ -133,7 +140,7 @@ class TTTGame{
     }
 
     void moveCursor(int _y, int _x){
-        if(_x<1 || _x >3 || _y<1 || _y>3)
+        if(_x<0 || _x >2 || _y<0 || _y>2)
             return;
         displayToBoard(cursorY,cursorX,-1, ' ');
         cursorY = _y;
@@ -145,15 +152,15 @@ class TTTGame{
         int screenX;
         int screenY;
         switch(_y){
-            case 1: screenY = 9; break;
-            case 2: screenY = 11; break;
-            case 3: screenY = 13; break;
+            case 0: screenY = 9; break;
+            case 1: screenY = 11; break;
+            case 2: screenY = 13; break;
             default: return;
         }
         switch(_x){
-            case 1: screenX = 14; break;
-            case 2: screenX = 19; break;
-            case 3: screenX = 25; break;
+            case 0: screenX = 14; break;
+            case 1: screenX = 19; break;
+            case 2: screenX = 25; break;
             default: return;
         }
         screenX += xOffset;
@@ -161,20 +168,46 @@ class TTTGame{
     }
 
     void makeMove(int _y, int _x){
-        string msg;
-        msg += patch::to_string(_y);
-        msg += " ";
-        msg += patch::to_string(_x);
+        string txt;
+        txt += patch::to_string(_y);
+        txt += " ";
+        txt += patch::to_string(_x);
 
-        sendMessage(MOVE,msg);
-        msg = getNewMessage();
-        if(strcmp(msg.c_str(), "valid") == 0){
+        sendMessage(MOVE,txt);
+        message msg;
+        getNewMessage(msg);
+        if(msg.type == MOVE_APPROVED || msg.type == SERVER_WIN){
             board[_y][_x] = PLAYER;
             displayToBoard(_y,_x, 0, 'X');
+            stringstream stream;
+            stream.str(msg.get_str());
+            stream >> _y;
+            stream >> _x;
+            board[_y][_x] = SERVER;
+            displayToBoard(_y,_x, 0, 'O');
         }
-        else if(strcmp(msg.c_str(), "invalid") == 0){
-            displayError(string("Invalid move. Choose an empty space."));
+        switch(msg.type){
+            case MOVE_APPROVED:
+
+            break;
+            case MOVE_DENIED:
+                displayError("invalid move, please try again");
+            break;
+            case PLAYER_WIN:
+                board[_y][_x] = PLAYER;
+                displayToBoard(_y,_x, 0, 'X');
+                displayWin(PLAYER);
+            break;
+            case SERVER_WIN:
+                displayWin(SERVER);
+            break;
+            case TIE:
+                board[_y][_x] = PLAYER;
+                displayToBoard(_y,_x, 0, 'X');
+                displayWin(EMPTY);
+            break;
         }
+
     }
 
     void displayError(string str){
@@ -182,6 +215,7 @@ class TTTGame{
         mvprintw(17,1,"press any key to continue...");
         getch();
         mvprintw(16,1,"                                                                      ");
+        mvprintw(17,1,"                                                                      ");
 
     }
 
@@ -225,6 +259,7 @@ class TTTGame{
             exitGame();
 
     }
+
     bool handshake(){
         readfd = open(fifos.serverFIFO().c_str(), O_RDONLY);
         message msg;
@@ -241,7 +276,16 @@ class TTTGame{
 
 };
 
+TTTGame* myGame;
+void exitRoutine(int s){
+    myGame->exitGame();
+    exit(1);
+}
+
 int main(){
-    TTTGame myGame;
-    myGame.startGame();
+    myGame = new TTTGame;
+    signal(SIGINT, exitRoutine);
+    myGame->startGame();
+    myGame->exitGame();
+    return true;
 }

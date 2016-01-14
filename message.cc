@@ -1,3 +1,6 @@
+
+#include "patch.h"
+
 #include "message.h"
 
 using namespace std;
@@ -19,5 +22,5 @@ void message::setempty(){
 }
 
 string message::get_str(){
-    return string(str);
+    return patch::to_string(str);
 }

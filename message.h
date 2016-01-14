@@ -3,7 +3,7 @@
 #define STR_LENGTH 512
 using namespace std;
 
-enum messageType{MOVE, EXIT, NEWGAME, HANDSHAKE, NO_MESSAGE};
+enum messageType{MOVE, EXIT, NEWGAME, HANDSHAKE, NO_MESSAGE, MOVE_DENIED, MOVE_APPROVED, PLAYER_WIN, SERVER_WIN, CHECK_WIN, TIE};
 static int _msgid = 0;
 
 class message{
